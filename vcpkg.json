@@ -1,0 +1,18 @@
+{
+  "name": "xrt-windows-deps",
+  "version": "0.1.0",
+  "description": "XRT Windows build dependencies (Boost, OpenCL, GTest, etc.). Build with vcpkg; output is copied to install/ with include/, lib/, bin/, share/ layout for use as EXT_DIR in XRT build.",
+  "dependencies": [
+    "boost-asio",
+    "boost-filesystem",
+    "boost-format",
+    "boost-interprocess",
+    "boost-process",
+    "boost-program-options",
+    "boost-property-tree",
+    "boost-regex",
+    "boost-uuid",
+    "gtest",
+    "opencl"
+  ]
+}
