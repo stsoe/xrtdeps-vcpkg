@@ -1,0 +1,51 @@
+# Build XRT Windows dependencies (vcpkg) on windows-latest and windows-11-arm.
+# Produces one artifact per architecture; download the matching one and extract to a directory
+# to use as EXT_DIR when building XRT (build\build22.bat -ext <path>).
+
+name: Build dependencies
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            triplet: x64-windows
+          - runner: windows-11-arm
+            triplet: arm64-windows
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up MSVC
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[17.0,18.0)"
+
+      - name: Bootstrap vcpkg
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+        working-directory: ${{ github.workspace }}
+
+      - name: Install dependencies
+        run: |
+          $env:VCPKG_BINARY_SOURCES = "clear"
+          .\vcpkg\vcpkg.exe install --x-manifest-root="${{ github.workspace }}" --triplet=${{ matrix.triplet }}
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xrt-deps-${{ matrix.triplet }}
+          path: ${{ github.workspace }}/vcpkg_installed/${{ matrix.triplet }}
