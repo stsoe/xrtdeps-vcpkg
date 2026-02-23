@@ -18,10 +18,10 @@ jobs:
       matrix:
         include:
           - runner: windows-latest
-            triplet: x64-windows-static-md
+            triplet: x64-windows-static
             triplet_dynamic: x64-windows
           - runner: windows-11-arm
-            triplet: arm64-windows-static-md
+            triplet: arm64-windows-static
             triplet_dynamic: arm64-windows
     runs-on: ${{ matrix.runner }}
 
