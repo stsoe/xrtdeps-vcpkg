@@ -60,6 +60,7 @@ jobs:
           # Replace static OpenCL lib with import lib for opencl.dll; copy DLL to bin
           Remove-Item -Path "$static\lib\OpenCL.lib" -ErrorAction SilentlyContinue
           Remove-Item -Path "$static\debug\lib\OpenCL.lib" -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path "$static\bin" -Force | Out-Null
           Copy-Item -Path "$dynamic\bin\opencl.dll" -Destination "$static\bin\" -Force
           Copy-Item -Path "$dynamic\lib\OpenCL.lib" -Destination "$static\lib\" -Force
         shell: pwsh
