@@ -1,4 +1,5 @@
 # Build XRT Windows dependencies (vcpkg) on windows-latest and windows-11-arm.
+# All dependencies are built as static libraries; both release and debug are produced.
 # Produces one artifact per architecture; download the matching one and extract to a directory
 # to use as EXT_DIR when building XRT (build\build22.bat -ext <path>).
 
@@ -18,9 +19,9 @@ jobs:
       matrix:
         include:
           - runner: windows-latest
-            triplet: x64-windows
+            triplet: x64-windows-static
           - runner: windows-11-arm
-            triplet: arm64-windows
+            triplet: arm64-windows-static
     runs-on: ${{ matrix.runner }}
 
     steps:
