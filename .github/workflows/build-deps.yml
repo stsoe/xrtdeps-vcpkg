@@ -1,7 +1,7 @@
 # Build XRT Windows dependencies (vcpkg) on windows-latest and windows-11-arm.
-# All dependencies are built as static libraries; both release and debug are produced.
-# Produces one artifact per architecture; download the matching one and extract to a directory
-# to use as EXT_DIR when building XRT (build\build22.bat -ext <path>).
+# All dependencies are static libs except OpenCL: the ICD loader is built as opencl.dll (dynamic).
+# Release and debug static libs are combined under lib/ (release at lib/, debug at lib/debug/).
+# Download the matching artifact and extract to use as EXT_DIR (build\build22.bat -ext <path>).
 
 name: Build dependencies
 
@@ -20,8 +20,10 @@ jobs:
         include:
           - runner: windows-latest
             triplet: x64-windows-static
+            triplet_dynamic: x64-windows
           - runner: windows-11-arm
             triplet: arm64-windows-static
+            triplet_dynamic: arm64-windows
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -39,10 +41,41 @@ jobs:
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
         working-directory: ${{ github.workspace }}
 
-      - name: Install dependencies
+      - name: Install dependencies (static, release + debug)
         run: |
           $env:VCPKG_BINARY_SOURCES = "clear"
           .\vcpkg\vcpkg.exe install --x-manifest-root="${{ github.workspace }}" --triplet=${{ matrix.triplet }}
+        working-directory: ${{ github.workspace }}
+
+      - name: Install OpenCL ICD loader as dynamic (opencl.dll)
+        run: |
+          $env:VCPKG_BINARY_SOURCES = "clear"
+          .\vcpkg\vcpkg.exe install opencl --triplet=${{ matrix.triplet_dynamic }} --x-manifest-root="${{ github.workspace }}"
+        working-directory: ${{ github.workspace }}
+
+      - name: Copy OpenCL DLL and import lib into static tree
+        run: |
+          $static = "${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet }}"
+          $dynamic = "${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet_dynamic }}"
+          # Replace static OpenCL lib with import lib for opencl.dll; copy DLL to bin
+          Remove-Item -Path "$static\lib\OpenCL.lib" -ErrorAction SilentlyContinue
+          Remove-Item -Path "$static\debug\lib\OpenCL.lib" -ErrorAction SilentlyContinue
+          Copy-Item -Path "$dynamic\bin\opencl.dll" -Destination "$static\bin\" -Force
+          Copy-Item -Path "$dynamic\lib\OpenCL.lib" -Destination "$static\lib\" -Force
+        shell: pwsh
+        working-directory: ${{ github.workspace }}
+
+      - name: Combine release and debug libs under lib/
+        run: |
+          $root = "${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet }}"
+          $debugLib = Join-Path $root "debug\lib"
+          $libDebug = Join-Path $root "lib\debug"
+          if (Test-Path $debugLib) {
+            New-Item -ItemType Directory -Path $libDebug -Force | Out-Null
+            Copy-Item -Path "$debugLib\*" -Destination $libDebug -Recurse -Force
+            Remove-Item -Path "$root\debug" -Recurse -Force
+          }
+        shell: pwsh
         working-directory: ${{ github.workspace }}
 
       - name: Upload artifact
