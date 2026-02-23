@@ -50,13 +50,13 @@ jobs:
       - name: Install OpenCL ICD loader as dynamic (opencl.dll)
         run: |
           $env:VCPKG_BINARY_SOURCES = "clear"
-          .\vcpkg\vcpkg.exe install opencl --triplet=${{ matrix.triplet_dynamic }} --x-manifest-root="${{ github.workspace }}"
+          .\vcpkg\vcpkg.exe install opencl --triplet=${{ matrix.triplet_dynamic }} --classic
         working-directory: ${{ github.workspace }}
 
       - name: Copy OpenCL DLL and import lib into static tree
         run: |
           $static = "${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet }}"
-          $dynamic = "${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet_dynamic }}"
+          $dynamic = "${{ github.workspace }}\vcpkg\installed\${{ matrix.triplet_dynamic }}"
           # Replace static OpenCL lib with import lib for opencl.dll; copy DLL to bin
           Remove-Item -Path "$static\lib\OpenCL.lib" -ErrorAction SilentlyContinue
           Remove-Item -Path "$static\debug\lib\OpenCL.lib" -ErrorAction SilentlyContinue
