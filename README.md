@@ -30,17 +30,13 @@ You then point the XRT build at this install directory using the **-ext** option
    git submodule update --init --recursive
    ```
 
-3. **Build the dependencies** (first run can take a long time; vcpkg builds from source):
+3. **Build the dependencies** (first run can take a long time; vcpkg builds from source). Run the script that mirrors the CI workflow (same triplets, static deps + dynamic OpenCL):
 
    ```bat
    build.bat
    ```
 
-   When finished, dependencies are in **install/** with:
-   - `install/include/`
-   - `install/lib/`
-   - `install/bin/` (e.g. OpenCL.dll)
-   - `install/share/`
+   This bootstraps vcpkg, installs all deps with `x64-windows-static` (or `arm64-windows-static` on ARM64), installs OpenCL as a DLL, and copies the OpenCL DLL/import lib into the static tree. When finished, dependencies are under **vcpkg_installed/x64-windows-static/** (or arm64). Use that path as `EXT_DIR`.
 
 ## Building XRT
 
@@ -58,7 +54,23 @@ set EXT_DIR=C:\path\to\xrt-windows-deps\install
 build\build22.bat
 ```
 
-XRT’s CMake uses `EXT_DIR` for `KHRONOS` and `BOOST_ROOT`, so a single path to this install directory is enough.
+XRT’s CMake uses `EXT_DIR` for `KHRONOS` and `BOOST_ROOT`, so a single path is enough.
+
+**Important:** These dependencies are built with the **static C/C++ runtime** (/MT). XRT must use the same runtime for the configuration that links them (e.g. Release). If XRT is built with the dynamic runtime (/MD), you will get linker errors (see **Troubleshooting** below).
+
+## Troubleshooting
+
+### LNK2001: unresolved external symbol `__std_find_first_of_trivial_pos_2`, `__std_search_1`, etc.
+
+These symbols are from the Microsoft C++ Standard Library. The error occurs when the **dependencies were built with the static CRT** (/MT, as with the `x64-windows-static` triplet) but **XRT is built with the dynamic CRT** (/MD). The linker then cannot resolve STL symbols referenced by the Boost (and other) static libs.
+
+**Fix:** Build XRT with the **static runtime** (/MT) for the configuration that uses these deps (e.g. Release). In Visual Studio: Project → Properties → C/C++ → Code Generation → Runtime Library → **Multi-threaded (/MT)** (or **Multi-threaded Debug (/MTd)** for Debug). In CMake, set `CMAKE_MSVC_RUNTIME_LIBRARY` to `MultiThreaded` (or `MultiThreadedDebug` for Debug) for that config.
+
+### Boost library names: `-s` in name vs CI (e.g. `libboost_*-mt-s-x64-1_86.lib` vs `boost_*-mt-x64-1_90.lib`)
+
+- The **`-s`** and **`lib`** prefix can appear when Boost is built with different options or an older Boost/vcpkg; the **1_86** vs **1_90** is the Boost version (1.86 vs 1.90).
+- To match CI, build dependencies with the **same triplet as CI**: `x64-windows-static`, and use the same vcpkg (and baseline) as the CI workflow so Boost and other port versions align.
+- Always use **`--triplet=x64-windows-static`** when running `vcpkg install` for this repo.
 
 ## Updating dependencies
 
@@ -72,7 +84,7 @@ XRT’s CMake uses `EXT_DIR` for `KHRONOS` and `BOOST_ROOT`, so a single path to
   cd ..
   ```
 
-- Re-run **build.bat** to rebuild and refresh **install/**.
+- Re-run the install command with `--triplet=x64-windows-static` to rebuild and refresh the dependency tree.
 
 ## Adding this repo as a submodule to XRT (optional)
 
@@ -85,7 +97,7 @@ git submodule update --init --recursive xrt-windows-deps
 cd xrt-windows-deps
 build.bat
 cd ..
-build\build22.bat -ext %CD%\xrt-windows-deps\install
+build\build22.bat -ext %CD%\xrt-windows-deps\vcpkg_installed\x64-windows-static
 ```
 
 Then document in XRT’s README or build docs that Windows builds can use `-ext <path-to-xrt-windows-deps>/install`.
