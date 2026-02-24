@@ -34,7 +34,8 @@ jobs:
       - name: Set up MSVC
         uses: microsoft/setup-msbuild@v2
         with:
-          vs-version: "[17.10.3,17.13.7)"
+          vs-version: "[17.10,17.14)"
+          vs-version: "[17.0,18.0)"
 
       - name: Bootstrap vcpkg
         run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
